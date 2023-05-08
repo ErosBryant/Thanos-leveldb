@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <stdio.h>
 
 #include "leveldb/cache.h"
 #include "leveldb/comparator.h"
@@ -20,6 +21,8 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
+
+#define X_WISCKEY 0
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -124,7 +127,10 @@ static bool FLAGS_reuse_logs = false;
 static bool FLAGS_compression = true;
 
 // Use the db with the following name.
-static const char* FLAGS_db = nullptr;
+static const char* FLAGS_db = "/media/eros/leveldb/normal/file";
+
+// vlog 
+static const char* V_FLAGS_db = "/media/eros/leveldb/vlog/v_file";
 
 // ZSTD compression level to try out
 static int FLAGS_zstd_compression_level = 1;
@@ -427,13 +433,16 @@ void Uncompress(
 
 class Benchmark {
  private:
+  // 수정 
+  uint64_t dumptime_w;
+  WriteOptions write_options_;
+  Env* env_;
   Cache* cache_;
   const FilterPolicy* filter_policy_;
   DB* db_;
   int num_;
   int value_size_;
   int entries_per_batch_;
-  WriteOptions write_options_;
   int reads_;
   int heap_counter_;
   CountComparator count_comparator_;
@@ -523,6 +532,8 @@ class Benchmark {
         filter_policy_(FLAGS_bloom_bits >= 0
                            ? NewBloomFilterPolicy(FLAGS_bloom_bits)
                            : nullptr),
+                           dumptime_w(0),
+                           env_(leveldb::Options().env),
         db_(nullptr),
         num_(FLAGS_num),
         value_size_(FLAGS_value_size),
@@ -544,9 +555,12 @@ class Benchmark {
   }
 
   ~Benchmark() {
+    std::cout << "bench_wisckey serialize time: " << dumptime_w << "us" << std::endl;
+    fclose(write_options_.vlog);
     delete db_;
     delete cache_;
     delete filter_policy_;
+    
   }
 
   void Run() {
@@ -802,6 +816,9 @@ class Benchmark {
   void Open() {
     assert(db_ == nullptr);
     Options options;
+
+    write_options_.vlog=nullptr;
+    
     options.env = g_env;
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
@@ -841,10 +858,11 @@ class Benchmark {
       std::snprintf(msg, sizeof(msg), "(%d ops)", num_);
       thread->stats.AddMessage(msg);
     }
-
     RandomGenerator gen;
     WriteBatch batch;
     Status s;
+    // vlog
+    write_options_.vlog = fopen(V_FLAGS_db,"w+");
     int64_t bytes = 0;
     KeyBuffer key;
     for (int i = 0; i < num_; i += entries_per_batch_) {
@@ -852,7 +870,28 @@ class Benchmark {
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i + j : thread->rand.Uniform(FLAGS_num);
         key.Set(k);
+        #if(X_WISCKEY)
+          // wisckey test
+          //uint64_t dumptime_w=0;
+          Slice value= gen.Generate(value_size_);
+          uint64_t start = env_->NowMicros();
+          long offset = ftell (write_options_.vlog);
+          long size = sizeof(value);
+          std::string vlog_offset = std::to_string(offset);
+          std::string vlog_size = std::to_string(size);
+          std::stringstream vlog_value;
+          vlog_value << vlog_offset << "&&" << vlog_size;
+          // vlog addr
+          std::string vaddr = vlog_value.str();	
+          fwrite (&value, sizeof(value),1,write_options_.vlog);
+          uint64_t end = env_->NowMicros();
+          dumptime_w += (end - start);
+
+        batch.Put(key.slice(), vaddr);
+        #endif
+        #if(!X_WISCKEY)
         batch.Put(key.slice(), gen.Generate(value_size_));
+        #endif
         bytes += value_size_ + key.slice().size();
         thread->stats.FinishedSingleOp();
       }
@@ -1115,9 +1154,9 @@ int main(int argc, char** argv) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
       FLAGS_open_files = n;
-    } else if (strncmp(argv[i], "--db=", 5) == 0) {
+    } /*else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
-    } else {
+    } */else {
       std::fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       std::exit(1);
     }

@@ -6,6 +6,7 @@
 #define STORAGE_LEVELDB_INCLUDE_OPTIONS_H_
 
 #include <cstddef>
+#include <cstdio>
 
 #include "leveldb/export.h"
 
@@ -168,6 +169,8 @@ struct LEVELDB_EXPORT ReadOptions {
 struct LEVELDB_EXPORT WriteOptions {
   WriteOptions() = default;
 
+    // wicskey option
+  FILE * vlog;
   // If true, the write will be flushed from the operating system
   // buffer cache (by calling WritableFile::Sync()) before the write
   // is considered complete.  If this flag is true, writes will be

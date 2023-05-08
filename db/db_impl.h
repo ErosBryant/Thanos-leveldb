@@ -78,7 +78,8 @@ class DBImpl : public DB {
   struct CompactionState;
   struct Writer;
   // 추가 
-  uint64_t stall_time_;
+  uint64_t mem_stall_time_;
+  uint64_t L0_stall_time_;
   uint64_t dumptime;
   size_t wa;
 

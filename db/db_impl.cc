@@ -11,6 +11,8 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <sstream> 
+
 
 #include "db/builder.h"
 #include "db/db_iter.h"
@@ -34,12 +36,16 @@
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
+#include "leveldb/options.h"
 
 #include "iostream"
+
 
 namespace leveldb {
 
 const int kNumNonTableCacheFiles = 10;
+
+static const char* V_FLAGS_db = "/media/eros/leveldb/vlog/v_file";
 
 // Information kept for every waiting writer
 struct DBImpl::Writer {
@@ -128,7 +134,8 @@ static int TableCacheSize(const Options& sanitized_options) {
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     : env_(raw_options.env),
       // 추가 
-      stall_time_(0), 
+      mem_stall_time_(0), 
+      L0_stall_time_(0),
       dumptime(0), 
       wa(0),
 
@@ -185,8 +192,10 @@ DBImpl::~DBImpl() {
     delete options_.block_cache;
   }
   // 추가 
-  std::cout << "stall time: " << stall_time_ << "us" << std::endl;
+  std::cout << "mem stall time: " << mem_stall_time_ << "us" << std::endl;
+  std::cout << "L0 stall time: " << L0_stall_time_ << "us" << std::endl;
   std::cout << "serialize time: " << dumptime << "us" << std::endl;
+  std::cout << "wisckey serialize time: " << dumptime_w << "us" << std::endl;
   // std::cout << "wa: " << wa << "Bytes" << std::endl;
   std::cout << "De_serialize time: " << TableCache::De_serialize << "us" << std::endl;
 }
@@ -1374,13 +1383,17 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       Log(options_.info_log, "Current memtable full; waiting...\n");
       background_work_finished_signal_.Wait();
       uint64_t end = env_->NowMicros();
-      stall_time_ += (end - start);
+      mem_stall_time_ += (end - start);
       
 
     } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
       // There are too many level-0 files.
+            //추가 
+      uint64_t start = env_->NowMicros();
       Log(options_.info_log, "Too many L0 files; waiting...\n");
       background_work_finished_signal_.Wait();
+      uint64_t end = env_->NowMicros();
+      L0_stall_time_ += (end - start);
     } else {
       // Attempt to switch to a new memtable and trigger compaction of old
       assert(versions_->PrevLogNumber() == 0);
@@ -1502,11 +1515,26 @@ void DBImpl::GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
   v->Unref();
 }
 
-// Default implementations of convenience methods that subclasses of DB
-// can call if they wish
+// for wisckey write
 Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
   WriteBatch batch;
-  batch.Put(key, value);
+ 
+  uint64_t start = env_->NowMicros();
+  long offset = ftell (opt.vlog);
+  long size = sizeof(value);
+  std::string vlog_offset = std::to_string(offset);
+  std::string vlog_size = std::to_string(size);
+  std::stringstream vlog_value;
+  vlog_value << vlog_offset << "&&" << vlog_size;
+          // vlog addr
+  std::string vaddr = vlog_value.str();	
+  fwrite (&value, sizeof(value),1,opt.vlog);
+  uint64_t end = env_->NowMicros();
+  dumptime_w += (end - start);  
+
+  batch.Put(key, vaddr);
+  
+  //batch.Put(key, value);
   return Write(opt, &batch);
 }
 
@@ -1531,11 +1559,15 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
     // Create new log and a corresponding memtable.
     uint64_t new_log_number = impl->versions_->NewFileNumber();
     WritableFile* lfile;
+
+    WriteOptions wk;
     s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
                                      &lfile);
     if (s.ok()) {
       edit.SetLogNumber(new_log_number);
       impl->logfile_ = lfile;
+      // vlog area
+      wk.vlog = fopen(V_FLAGS_db,"wb+");
       impl->logfile_number_ = new_log_number;
       impl->log_ = new log::Writer(lfile);
       impl->mem_ = new MemTable(impl->internal_comparator_);

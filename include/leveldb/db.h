@@ -11,6 +11,7 @@
 #include "leveldb/export.h"
 #include "leveldb/iterator.h"
 #include "leveldb/options.h"
+#include "leveldb/env.h"
 
 namespace leveldb {
 
@@ -45,6 +46,9 @@ struct LEVELDB_EXPORT Range {
 // any external synchronization.
 class LEVELDB_EXPORT DB {
  public:
+  //추가 
+  Env* env_;
+  uint64_t dumptime_w=0;
   // Open the database with the specified "name".
   // Stores a pointer to a heap-allocated database in *dbptr and returns
   // OK on success.
