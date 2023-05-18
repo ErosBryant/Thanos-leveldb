@@ -205,8 +205,8 @@ DBImpl::~DBImpl() {
   std::cout << "SST time: " << SST_time_ << "us" << std::endl;
   std::cout << "sst indexing time: " << Version::sst_index_time << "us" << std::endl;
   std::cout << "find table time: " << TableCache::find_table_time << "us" << std::endl;
-  std::cout << " de_serialize time : " << TableCache::return_value_func << "us" << std::endl;
-  // std::cout << " return_value: " << Table::return_value << "us" << std::endl;
+  std::cout << "sst internal search time : " << TableCache::return_value_func << "us" << std::endl;
+  std::cout << "de_serialize time: " << Table::return_value << "us" << std::endl;
   /*
   // 읽기 시간 
   */
@@ -1425,9 +1425,9 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       // There are too many level-0 files.
       uint64_t start = env_->NowMicros();
       Log(options_.info_log, "Too many L0 files; waiting...\n");
+      background_work_finished_signal_.Wait();
       uint64_t end = env_->NowMicros();
       L0_stall_time_ += (end - start);
-      background_work_finished_signal_.Wait();
     } else {
       // Attempt to switch to a new memtable and trigger compaction of old
       assert(versions_->PrevLogNumber() == 0);

@@ -161,6 +161,7 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
   Cache* block_cache = table->rep_->options.block_cache;
   Block* block = nullptr;
   Cache::Handle* cache_handle = nullptr;
+  Env* env_ = Env::Default();
 
   BlockHandle handle;
   Slice input = index_value;
@@ -179,7 +180,12 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
       if (cache_handle != nullptr) {
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
       } else {
-        s = ReadBlock(table->rep_->file, options, handle, &contents);
+        // de se: read block
+         uint64_t start = env_->NowMicros(); 
+         s = ReadBlock(table->rep_->file, options, handle, &contents);
+         uint64_t end = env_->NowMicros();
+         return_value+= (end-start);
+
         if (s.ok()) {
           block = new Block(contents);
           if (contents.cachable && options.fill_cache) {
@@ -189,7 +195,11 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
         }
       }
     } else {
-      s = ReadBlock(table->rep_->file, options, handle, &contents);
+              // de se: read block
+        uint64_t start = env_->NowMicros(); 
+        s = ReadBlock(table->rep_->file, options, handle, &contents);
+        uint64_t end = env_->NowMicros();
+        return_value+= (end-start);
       if (s.ok()) {
         block = new Block(contents);
       }
@@ -220,7 +230,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
                           void (*handle_result)(void*, const Slice&,
                                                 const Slice&)) {
   Status s;
-  Env* env_ = Env::Default();
+ // Env* env_ = Env::Default();
   Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
   iiter->Seek(k);
   if (iiter->Valid()) {
@@ -232,14 +242,15 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
       // Not found
     } else {
 
-
-      // uint64_t start = env_->NowMicros(); 
       Iterator* block_iter = BlockReader(this, options, iiter->value());
       block_iter->Seek(k);
       if (block_iter->Valid()) {
+                // de se: read block
+       // uint64_t start = env_->NowMicros(); 
         (*handle_result)(arg, block_iter->key(), block_iter->value());
-        //uint64_t end = env_->NowMicros();
-        //return_value+= (end-start);
+        // uint64_t end = env_->NowMicros();
+         //return_value+= (end-start);
+
 
       }
       s = block_iter->status();

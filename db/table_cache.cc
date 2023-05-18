@@ -120,6 +120,7 @@ Status TableCache::Get(const ReadOptions& options, uint64_t file_number,
   find_table_time +=(end-start);
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+          // de_se 
     uint64_t start = env_->NowMicros();
     s = t->InternalGet(options, k, arg, handle_result);
     uint64_t end = env_->NowMicros();
