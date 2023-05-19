@@ -207,27 +207,7 @@ DBImpl::~DBImpl() {
   if (owns_cache_) {
     delete options_.block_cache;
   }
-  // 쓰기 시간
-  std::cout << "log time: " << log_time << "us" << std::endl;
-  std::cout << "memtable write time: " << w_mem_time << "us" << std::endl;
-  std::cout << "memtable stall time: " << mem_stall_time_ << "us" << std::endl;
-  std::cout << "L0 stall time: " << L0_stall_time_ << "us" << std::endl; 
-  std::cout << "Flush time: " << dumptime << "us" << std::endl;
-  std::cout << "serialize time: " << env_->ser_time << "us" << std::endl;
-  std::cout << "Compaction time: " << comp_time << "us" << std::endl;
-  
-  std::cout << "*** read *** " << std::endl;
 
-  std::cout << "memtable time: " << mem_time_ << "us" << std::endl;
-  std::cout << "SST time: " << SST_time_ << "us" << std::endl;
-   std::cout << "SST time: " << vlog_imm << "us" << std::endl;
-  std::cout << "sst indexing time: " << Version::sst_index_time << "us" << std::endl;
-  std::cout << "find table time: " << TableCache::find_table_time << "us" << std::endl;
-  std::cout << "sst internal search time : " << TableCache::return_value_func << "us" << std::endl;
-  std::cout << "de_serialize time: " << Table::return_value << "us" << std::endl;
-  /*
-  // 읽기 시간 
-  */
   delete vlog;
 }
 
@@ -1574,8 +1554,36 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
         value->append(buf);
       }
     }
+      // 쓰기 시간
+  std::cout << "log time: " << log_time << "us" << std::endl;
+  std::cout << "memtable write time: " << w_mem_time << "us" << std::endl;
+  std::cout << "memtable stall time: " << mem_stall_time_ << "us" << std::endl;
+  std::cout << "L0 stall time: " << L0_stall_time_ << "us" << std::endl; 
+  std::cout << "Flush time: " << dumptime << "us" << std::endl;
+  std::cout << "serialize time: " << env_->ser_time << "us" << std::endl;
+  std::cout << "Compaction time: " << comp_time << "us" << std::endl;
+  
+  std::cout << "*** read *** " << std::endl;
+
+  std::cout << "memtable time: " << mem_time_ << "us" << std::endl;
+  std::cout << "SST time: " << SST_time_ << "us" << std::endl;
+  std::cout << "Vlog indexing time: " << vlog_imm << "us" << std::endl;
+  std::cout << "sst indexing time: " << Version::sst_index_time << "us" << std::endl;
+  std::cout << "find table time: " << TableCache::find_table_time << "us" << std::endl;
+  std::cout << "sst internal search time : " << TableCache::return_value_func << "us" << std::endl;
+  std::cout << "de_serialize time: " << Table::return_value << "us" << std::endl;
+
+
     return true;
-  } else if (in == "sstables") {
+  } else if (in == "vlog_stats") {
+  
+    std::cout << "Vlog size :" << adgMod::db->vlog->getvlog_size() << "byte" << std::endl;
+      std::cout << "Vlog buffer size :" << adgMod::db->vlog->getvlog_buffer() << "byte" << std::endl;
+
+
+    
+   return true;
+  }else if (in == "sstables") {
     *value = versions_->current()->DebugString();
     return true;
   } else if (in == "approximate-memory-usage") {

@@ -3,4 +3,16 @@
 Just do it!!!!!
 
 ### `Wisceky`
-- ./db_bench --benchmarks="filrandom" --vlog=1 
+```
+benchmarks 
+- stats        -- Print DB stats & time
+- vlog_stats   -- Print vlog bufer size
+
+```
+
+```
+-- vlog        -- use wisckey
+
+```
+
+- ./db_bench --benchmarks="filrandom,stats,vlog_stats" --vlog=1   

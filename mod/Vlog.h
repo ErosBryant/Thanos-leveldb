@@ -22,6 +22,8 @@ private:
     void Flush();
 
 public:
+    uint64_t getvlog_size();
+    int getvlog_buffer();
     explicit VLog(const std::string& vlog_name);
     uint64_t AddRecord(const Slice& key, const Slice& value);
     std::string ReadRecord(uint64_t address, uint32_t size);

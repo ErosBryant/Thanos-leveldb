@@ -45,7 +45,7 @@
 //      crc32c        -- repeated crc32c of 4K of data
 //   Meta operations:
 //      compact     -- Compact the entire DB
-//      stats       -- Print DB stats
+//      stats       -- Print DB stats & time
 //      sstables    -- Print sstable info
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
@@ -649,7 +649,9 @@ class Benchmark {
         PrintStats("leveldb.stats");
       } else if (name == Slice("sstables")) {
         PrintStats("leveldb.sstables");
-      } else {
+      } else if (name == Slice("vlog_stats")) {
+        PrintStats("leveldb.vlog_stats");
+      }else {
         if (!name.empty()) {  // No error message for empty name
           std::fprintf(stderr, "unknown benchmark '%s'\n",
                        name.ToString().c_str());
