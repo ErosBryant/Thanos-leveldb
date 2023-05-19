@@ -1,4 +1,4 @@
-## Make the Thanos-DB for Fast 2x
+## Make the Thanos-DB for Fast 24
 
 Just do it!!!!!
 
