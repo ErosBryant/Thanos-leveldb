@@ -193,6 +193,14 @@ target_sources(leveldb
     "util/options.cc"
     "util/random.h"
     "util/status.cc"
+    "mod/Vlog.cpp"
+    "mod/Vlog.h"
+    "mod/util.h"
+    "mod/util.cpp"
+    "mod/Counter.h"
+    "mod/Counter.cpp"
+  
+
 
   # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
   $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>

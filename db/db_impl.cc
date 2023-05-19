@@ -35,6 +35,10 @@
 #include "util/logging.h"
 #include "util/mutexlock.h"
 
+
+#include "mod/Vlog.h"
+#include "mod/util.h"
+
 #include "iostream"
 
 namespace leveldb {
@@ -133,12 +137,11 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       mem_time_(0),
       w_mem_time(0),
       SST_time_(0),
+      vlog_imm(0),
       comp_time(0),
       dumptime(0),
       log_time(0),
       wa(0),
-
-      
       internal_comparator_(raw_options.comparator),
       internal_filter_policy_(raw_options.filter_policy),
       options_(SanitizeOptions(dbname, &internal_comparator_,
@@ -161,7 +164,13 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       background_compaction_scheduled_(false),
       manual_compaction_(nullptr),
       versions_(new VersionSet(dbname_, &options_, table_cache_,
-                               &internal_comparator_)) {}
+                               &internal_comparator_)),
+                               
+     version_count(0) {
+       adgMod::db = this;
+      vlog = new adgMod::VLog(dbname_ + "/vlog.txt"); }
+
+
 
 DBImpl::~DBImpl() {
   // Wait for background work to finish.
@@ -170,7 +179,15 @@ DBImpl::~DBImpl() {
   while (background_compaction_scheduled_) {
     background_work_finished_signal_.Wait();
   }
+  
+  if (adgMod::MOD == 1 ) {
+    CompactMemTable(imm_);
+    CompactMemTable(mem_);
+  }
+
   mutex_.Unlock();
+
+
 
   if (db_lock_ != nullptr) {
     env_->UnlockFile(db_lock_);
@@ -203,6 +220,7 @@ DBImpl::~DBImpl() {
 
   std::cout << "memtable time: " << mem_time_ << "us" << std::endl;
   std::cout << "SST time: " << SST_time_ << "us" << std::endl;
+   std::cout << "SST time: " << vlog_imm << "us" << std::endl;
   std::cout << "sst indexing time: " << Version::sst_index_time << "us" << std::endl;
   std::cout << "find table time: " << TableCache::find_table_time << "us" << std::endl;
   std::cout << "sst internal search time : " << TableCache::return_value_func << "us" << std::endl;
@@ -210,6 +228,7 @@ DBImpl::~DBImpl() {
   /*
   // 읽기 시간 
   */
+  delete vlog;
 }
 
 Status DBImpl::NewDB() {
@@ -615,7 +634,29 @@ void DBImpl::CompactMemTable() {
   } else {
     RecordBackgroundError(s);
   }
+  //추후 vlog flush counter 
+
 }
+void DBImpl::CompactMemTable(MemTable *table) {
+   mutex_.AssertHeld();
+   if (table == nullptr) return;
+    // Save the contents of the memtable as a new Table
+    VersionEdit edit;
+    Version* base = versions_->current();
+    base->Ref();
+    Status s = WriteLevel0Table(table, &edit, base);
+    base->Unref();
+
+    // Replace immutable memtable with the generated Table
+    if (s.ok()) {
+        edit.SetPrevLogNumber(0);
+        edit.SetLogNumber(logfile_number_);  // Earlier logs no longer needed
+        s = versions_->LogAndApply(&edit, &mutex_);
+    }
+}
+
+
+
 
 void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
   int max_level_with_files = 1;
@@ -1202,6 +1243,16 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
 
       have_stat_update = true;
     }
+    
+    // vlog get
+    if (adgMod::MOD == true && s.ok()) {
+    uint64_t start2 = env_->NowMicros();
+    uint64_t value_address = DecodeFixed64(value->c_str());
+    uint32_t value_size = DecodeFixed32(value->c_str() + sizeof(uint64_t));
+    *value = std::move(vlog->ReadRecord(value_address, value_size));
+    uint64_t end2 = env_->NowMicros();
+    vlog_imm += (end2 - start2);
+    }
     mutex_.Lock();
   }
 
@@ -1213,6 +1264,7 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
   current->Unref();
   return s;
 }
+
 
 Iterator* DBImpl::NewIterator(const ReadOptions& options) {
   SequenceNumber latest_snapshot;
@@ -1245,8 +1297,19 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 
 // Convenience methods
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
-  return DB::Put(o, key, val);
-}
+ if (adgMod::MOD==1) {
+    uint64_t start = env_->NowMicros();
+    uint64_t value_address = adgMod::db->vlog->AddRecord(key, val);
+    char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
+    EncodeFixed64(buffer, value_address);
+    EncodeFixed32(buffer + sizeof(uint64_t), val.size());
+    uint64_t end = env_->NowMicros();
+    log_time += (end - start);
+    return DB::Put(o, key, (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
+  } else {
+    return DB::Put(o, key, val);
+  }
+  }
 
 Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
   return DB::Delete(options, key);
@@ -1282,18 +1345,20 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
     // into mem_.
     {
       mutex_.Unlock();
-      // log 시간 
-      uint64_t start = env_->NowMicros();
-      status = log_->AddRecord(WriteBatchInternal::Contents(write_batch));
-      uint64_t end = env_->NowMicros();
-      log_time += (end - start);
-      bool sync_error = false;
-      if (status.ok() && options.sync) {
-        status = logfile_->Sync();
-        if (!status.ok()) {
-          sync_error = true;
-        }
+       bool sync_error = false;
+      if (adgMod::MOD == 0 ) {
+          uint64_t start = env_->NowMicros();
+          status = log_->AddRecord(WriteBatchInternal::Contents(write_batch));
+          uint64_t end = env_->NowMicros();
+          log_time += (end - start);
+          if (status.ok() && options.sync) {
+              status = logfile_->Sync();
+              if (!status.ok()) {
+                  sync_error = true;
+              }
+          }
       }
+
       if (status.ok()) {
         uint64_t start2 = env_->NowMicros();
         status = WriteBatchInternal::InsertInto(write_batch, mem_);
@@ -1567,6 +1632,8 @@ DB::~DB() = default;
 
 Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   *dbptr = nullptr;
+
+  adgMod::env = options.env;
 
   DBImpl* impl = new DBImpl(options, dbname);
   impl->mutex_.Lock();

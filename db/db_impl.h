@@ -9,6 +9,7 @@
 #include <deque>
 #include <set>
 #include <string>
+#include <mod/Vlog.h>
 
 #include "db/dbformat.h"
 #include "db/log_writer.h"
@@ -73,6 +74,9 @@ class DBImpl : public DB {
   void RecordReadSample(Slice key);
   //uint64_t De_serialize;
 
+  adgMod::VLog* vlog;
+  std::atomic<int> version_count;
+ 
  private:
   friend class DB;
   struct CompactionState;
@@ -82,12 +86,11 @@ class DBImpl : public DB {
   uint64_t L0_stall_time_;
   uint64_t mem_time_;
   uint64_t SST_time_;
+  uint64_t vlog_imm;
   uint64_t dumptime;
   uint64_t log_time;
   uint64_t comp_time;
   uint64_t w_mem_time;
-
-
 
   size_t wa;
 
@@ -137,6 +140,7 @@ class DBImpl : public DB {
   // log-file/memtable and writes a new descriptor iff successful.
   // Errors are recorded in bg_error_.
   void CompactMemTable() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  void CompactMemTable(MemTable* table) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   Status RecoverLogFile(uint64_t log_number, bool last_log, bool* save_manifest,
                         VersionEdit* edit, SequenceNumber* max_sequence)
