@@ -9,7 +9,6 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
-#include <mod/util.h>
 #include <sys/types.h>
 
 #include "leveldb/cache.h"
@@ -1102,7 +1101,7 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--compression=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_compression = n;
-    } else if (sscanf(argv[i], "--mod=%d%c", &n, &junk) == 1 && 
+    } else if (sscanf(argv[i], "--vlog=%d%c", &n, &junk) == 1 && 
     (n == 0 || n == 1)){
       adgMod::MOD = n;
     }else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
