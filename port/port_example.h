@@ -12,6 +12,8 @@
 
 #include "port/thread_annotations.h"
 
+static const bool kLittleEndian = true /* or some other expression */;
+
 namespace leveldb {
 namespace port {
 

@@ -844,7 +844,7 @@ class Benchmark {
   void DoWrite(ThreadState* thread, bool seq) {
     if (num_ != FLAGS_num) {
       char msg[100];
-      std::snprintf(msg, sizeof(msg), "(%d ops)", num_);
+      snprintf(msg, sizeof(msg), "(%d ops)", num_);
       thread->stats.AddMessage(msg);
     }
 
@@ -852,25 +852,22 @@ class Benchmark {
     WriteBatch batch;
     Status s;
     int64_t bytes = 0;
-    KeyBuffer key;
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
-        //수정 
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-        // batch.Put(key.slice(), gen.Generate(value_size_));
+        //batch.Put(key, gen.Generate(value_size_));
         db_->Put(write_options_, key, gen.Generate(value_size_));
-
-          bytes += value_size_ + strlen(key);
+        bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
       }
-/*       s = db_->Write(write_options_, &batch);
-      if (!s.ok()) {
-        std::fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-        std::exit(1);
-      } */
+//      s = db_->Write(write_options_, &batch);
+//      if (!s.ok()) {
+//        fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+//        exit(1);
+//      }
     }
     thread->stats.AddBytes(bytes);
   }
@@ -901,6 +898,26 @@ class Benchmark {
     thread->stats.AddBytes(bytes);
   }
 
+
+  void ReadRandom(ThreadState* thread) {
+    ReadOptions options;
+    std::string value;
+    int found = 0;
+    for (int i = 0; i < reads_; i++) {
+      char key[100];
+      const int k = thread->rand.Next() % FLAGS_num;
+      snprintf(key, sizeof(key), "%016d", k);
+      if (db_->Get(options, key, &value).ok()) {
+        found++;
+      }
+      thread->stats.FinishedSingleOp();
+    }
+    char msg[100];
+    snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
+    thread->stats.AddMessage(msg);
+  }
+
+/*
   void ReadRandom(ThreadState* thread) {
     ReadOptions options;
     std::string value;
@@ -919,6 +936,7 @@ class Benchmark {
     thread->stats.AddMessage(msg);
   }
 
+  */
   void ReadMissing(ThreadState* thread) {
     ReadOptions options;
     std::string value;
@@ -948,13 +966,13 @@ class Benchmark {
   void SeekRandom(ThreadState* thread) {
     ReadOptions options;
     int found = 0;
-    KeyBuffer key;
     for (int i = 0; i < reads_; i++) {
       Iterator* iter = db_->NewIterator(options);
-      const int k = thread->rand.Uniform(FLAGS_num);
-      key.Set(k);
-      iter->Seek(key.slice());
-      if (iter->Valid() && iter->key() == key.slice()) found++;
+      char key[100];
+      const int k = thread->rand.Next() % FLAGS_num;
+      snprintf(key, sizeof(key), "%016d", k);
+      iter->Seek(key);
+      if (iter->Valid() && iter->key() == key) found++;
       delete iter;
       thread->stats.FinishedSingleOp();
     }

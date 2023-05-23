@@ -11,6 +11,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "db/builder.h"
 #include "db/db_iter.h"
@@ -38,8 +39,11 @@
 
 #include "mod/Vlog.h"
 #include "mod/util.h"
-
+#include <x86intrin.h>
 #include "iostream"
+
+#include <stdint.h>
+#include <stdio.h>
 
 namespace leveldb {
 
@@ -1224,15 +1228,33 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
       have_stat_update = true;
     }
     
+    printf("lkey %s\n",lkey.user_key().ToString().c_str());
+    printf("value %lu\n",value->c_str());
+
     // vlog get
-    if (adgMod::MOD == true && s.ok()) {
+ 
+    if (adgMod::MOD == 1 && s.ok()) {
+      printf("-----\n");
+  
     uint64_t start2 = env_->NowMicros();
     uint64_t value_address = DecodeFixed64(value->c_str());
     uint32_t value_size = DecodeFixed32(value->c_str() + sizeof(uint64_t));
-    *value = std::move(vlog->ReadRecord(value_address, value_size));
+      
+  
+  //  printf("value_address %lu\n",&value_address);
+   // printf("value_size %lu\n",&value_size);
+
+      printf("address: %lu, size: %u\n", value_address, value_size);
+
+    *value = std::move( adgMod::db->vlog->ReadRecord(value_address, value_size));
+    //*value =  adgMod::db->vlog->ReadRecord(value_address, value_size);
+    
+    // printf("=------------------\n");
     uint64_t end2 = env_->NowMicros();
     vlog_imm += (end2 - start2);
     }
+
+
     mutex_.Lock();
   }
 
@@ -1276,20 +1298,26 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 }
 
 // Convenience methods
+
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
- if (adgMod::MOD==1) {
+  if (adgMod::MOD == 1) {
+
     uint64_t start = env_->NowMicros();
     uint64_t value_address = adgMod::db->vlog->AddRecord(key, val);
     char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
     EncodeFixed64(buffer, value_address);
     EncodeFixed32(buffer + sizeof(uint64_t), val.size());
+
     uint64_t end = env_->NowMicros();
     log_time += (end - start);
     return DB::Put(o, key, (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
   } else {
     return DB::Put(o, key, val);
   }
-  }
+}
+
+
+
 
 Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
   return DB::Delete(options, key);
@@ -1326,7 +1354,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
     {
       mutex_.Unlock();
        bool sync_error = false;
-      if (adgMod::MOD == 0 ) {
+      if (adgMod::MOD == 0) {
           uint64_t start = env_->NowMicros();
           status = log_->AddRecord(WriteBatchInternal::Contents(write_batch));
           uint64_t end = env_->NowMicros();

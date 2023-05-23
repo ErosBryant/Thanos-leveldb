@@ -17,11 +17,12 @@ private:
     WritableFile* writer;
     RandomAccessFile* reader;
     std::string buffer;
-    uint64_t vlog_size;
+    uint64_t vlog_size;    
 
     void Flush();
 
 public:
+
     uint64_t getvlog_size();
     int getvlog_buffer();
     explicit VLog(const std::string& vlog_name);
@@ -33,7 +34,11 @@ public:
 
 
 
+
+
 }
+
+
 
 
 #endif //LEVELDB_VLOG_H

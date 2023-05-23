@@ -24,8 +24,6 @@ namespace adgMod {
     bool fresh_write = false;
 
 
-//./db_bench --benchmarks="fillrandom" --mod=8  --db=/home/eros/workspace/Bourbon/tmp1 --value_size=4096
-
     std::atomic<int> num_read(0);
     std::atomic<int> num_write(0);
 

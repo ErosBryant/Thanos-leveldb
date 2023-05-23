@@ -121,6 +121,7 @@ class StringSource : public RandomAccessFile {
     if (offset >= contents_.size()) {
       return Status::InvalidArgument("invalid Read offset");
     }
+    
     if (offset + n > contents_.size()) {
       n = contents_.size() - offset;
     }

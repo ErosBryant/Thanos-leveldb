@@ -197,8 +197,9 @@ target_sources(leveldb
     "mod/Vlog.h"
     "mod/util.h"
     "mod/util.cpp"
-    "mod/Counter.h"
-    "mod/Counter.cpp"
+
+#    "mod/Counter.h"
+#    "mod/Counter.cpp"
   
 
 
