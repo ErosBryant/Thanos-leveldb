@@ -294,8 +294,8 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
         if (block_iter->Valid()) {
           (*handle_result)(arg, block_iter->key(), block_iter->value());
 
-          printf("key: %d\n", *(uint8_t *)(block_iter->key().data()));
-          printf("InternalGet value+: %d\n", *(uint8_t *)(block_iter->value().data()));
+         /* printf("key: %d\n", *(uint8_t *)(block_iter->key().data()));
+          printf("InternalGet value+: %d\n", *(uint8_t *)(block_iter->value().data()));*/
         }
         s = block_iter->status();
         delete block_iter;

@@ -128,9 +128,9 @@ Status TableCache::Get(const ReadOptions& options, uint64_t file_number,
           // de_se 
     uint64_t start = env_->NowMicros();
     s = t->InternalGet(options, k, arg, handle_result, level,meta );
-            printf("arg : %d\n",*(int*)arg);
+        /*  printf("arg : %d\n",*(int*)arg);
           printf("TableCache::Get k : %d\n",*(int*)k.data());
-          printf("handle_result : %d\n",*(int*)handle_result);
+          printf("handle_result : %d\n",*(int*)handle_result);*/
     uint64_t end = env_->NowMicros();
     return_value_func+=(end-start);
     

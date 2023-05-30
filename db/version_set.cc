@@ -269,8 +269,8 @@ static void SaveValue(void* arg, const Slice& ikey, const Slice& v) {
       s->state = (parsed_key.type == kTypeValue) ? kFound : kDeleted;
       if (s->state == kFound) {
         s->value->assign(v.data(), v.size());
-        printf("SaveValue value: %d\n", *(uint8_t *)(v.data()));
-        printf("-----------\n");
+      //  printf("SaveValue value: %d\n", *(uint8_t *)(v.data()));
+       
       }
     }
   }
@@ -346,6 +346,7 @@ uint64_t Version::sst_index_time = 0;
         // in a smaller level, later levels are irrelevant.
         std::vector<FileMetaData *> tmp;
         FileMetaData *tmp2;
+        auto sst_start = std::chrono::high_resolution_clock::now();
         for (int level = 0; level < config::kNumLevels; level++) {
             size_t num_files = files_[level].size();
             if (num_files == 0) continue;
@@ -387,7 +388,8 @@ uint64_t Version::sst_index_time = 0;
                         }
                     }
                 }
-            
+            auto sst_end = std::chrono::high_resolution_clock::now();
+            Version::sst_index_time += std::chrono::duration_cast<std::chrono::microseconds>(sst_end - sst_start).count();
             for (uint32_t i = 0; i < num_files; ++i) {
                 if (last_file_read != nullptr && stats->seek_file == nullptr) {
                     // We have had more than one seek for this read.  Charge the 1st file.
@@ -408,8 +410,8 @@ uint64_t Version::sst_index_time = 0;
                 //&state->saver
                 s = vset_->table_cache_->Get(options, f->number, f->file_size, ikey,
                                                  &saver, SaveValue, level, f);
-                printf("Version::Get key: %d\n", *(uint8_t *)(ikey.data()));
-                printf("value: %d\n", *(uint8_t *)(saver.value));
+             /*   printf("Version::Get key: %d\n", *(uint8_t *)(ikey.data()));
+                printf("value: %d\n", *(uint8_t *)(saver.value));*/
 
 
                 if (!s.ok()) {

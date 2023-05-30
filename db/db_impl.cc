@@ -548,7 +548,11 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
+      uint64_t start = env_->NowMicros();
+
     s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+      uint64_t end = env_->NowMicros();
+      dumptime += (end - start);
     mutex_.Lock();
   }
 
@@ -1223,15 +1227,10 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
       have_stat_update = true;
     }
     
-  //  printf("lkey %s\n",lkey.user_key().ToString().c_str());
-   // printf("value %lu\n",value->c_str());
-
-    // vlog get
- 
     if (adgMod::MOD == 1 && s.ok()) {
-      //printf("-----\n");
+    
   
-  //  uint64_t start2 = env_->NowMicros();
+    uint64_t start2 = env_->NowMicros();
     uint64_t value_address = DecodeFixed64(value->c_str());
     uint32_t value_size = DecodeFixed32(value->c_str() + sizeof(uint64_t));
       
@@ -1239,16 +1238,12 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
    //printf("value_address %lu\n",&value_address);
   // printf("value_size %lu\n",&value_size);
 
-    printf("address: %lu, size: %u\n", value_address, value_size);
+    //  printf("address: %lu, size: %u\n", value_address, value_size);
 
     *value = std::move(adgMod::db->vlog->ReadRecord(value_address, value_size));
-    printf("value***: %s\n", value->c_str());
-    printf("-----------\n");
-    //*value =  adgMod::db->vlog->ReadRecord(value_address, value_size);
-    
-    // printf("=------------------\n");
-    //uint64_t end2 = env_->NowMicros();
-    //vlog_imm += (end2 - start2);
+    // printf("value***: %s\n", value->c_str());
+    uint64_t end2 = env_->NowMicros();
+    vlog_imm += (end2 - start2);
     }
 
 

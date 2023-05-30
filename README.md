@@ -3,18 +3,16 @@
 Just do it!!!!!
 
 ### `Wisceky`
+- `benchmarks`
+
 ```
-benchmarks 
 - stats        -- Print DB stats & time
 - vlog_stats   -- Print vlog bufer size
-
 ```
 
 ```
--- vlog        -- use wisckey
-
+--vlog=1        -- use wisckey
 ```
-./db_bench --benchmarks="readseq" --num=100000 --vlog=1 --db=/home/eros/workspace/Thanos-leveldb/tmp --use_existing_db=1
 
 - ./db_bench --benchmarks="fillrandom,stats,vlog_stats" --vlog=1   
-- ./db_bench --benchmarks="readrandom,stats,vlog_stats"  --db=
+- ./db_bench --benchmarks="readrandom,stats,vlog_stats" --vlog=1  --db=--db=/home/eros/workspace/Thanos-leveldb/tmp --use_existing_db=1

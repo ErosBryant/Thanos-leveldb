@@ -191,6 +191,7 @@ class PosixRandomAccessFile final : public RandomAccessFile {
       ::close(fd);  // The file will be opened on every read.
     }
   }
+  PosixRandomAccessFile() = default;
 
   ~PosixRandomAccessFile() override {
     if (has_permanent_fd_) {
@@ -206,7 +207,7 @@ class PosixRandomAccessFile final : public RandomAccessFile {
 
   Status Read(uint64_t offset, size_t n, Slice* result,
               char* scratch) const override {
-                printf("aaaaaa Read\n");
+
     int fd = fd_;
     if (!has_permanent_fd_) {
       fd = ::open(filename_.c_str(), O_RDONLY);
@@ -219,9 +220,9 @@ class PosixRandomAccessFile final : public RandomAccessFile {
 
     Status status;
     ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
-    printf("aaaaaa read_size %d\n", read_size);
+    //printf("aaaaaa read_size %d\n", read_size);
     *result = Slice(scratch, (read_size < 0) ? 0 : read_size);
-    printf("aaaaaa result %s\n", result->ToString().c_str());
+    //printf("aaaaaa result %s\n", result->ToString().c_str());
     if (read_size < 0) {
       // An error: return a non-ok status.
       status = PosixError(filename_, errno);
@@ -271,7 +272,6 @@ class PosixMmapReadableFile final : public RandomAccessFile {
 
   Status Read(uint64_t offset, size_t n, Slice* result,
               char* scratch) const override {
-   printf("11111\n");
     if (offset + n > length_) {
       *result = Slice();
       return PosixError(filename_, EINVAL);
@@ -551,19 +551,20 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status NewRandomAccessFile(const std::string& filename,
+    Status NewRandomAccessFile(const std::string& filename,
                              RandomAccessFile** result) override {
+
     *result = nullptr;
-    int fd = ::open(filename.c_str(), O_RDONLY | kOpenBaseFlags);
+    int fd = ::open(filename.c_str(), O_RDONLY);
     if (fd < 0) {
       return PosixError(filename, errno);
     }
 
-    if (!mmap_limiter_.Acquire()) {
+    if (!mmap_limiter_.Acquire() || filename.find("vlog") != std::string::npos) {
+      posix_fadvise(fd, 0, 0, POSIX_FADV_RANDOM);
       *result = new PosixRandomAccessFile(filename, fd, &fd_limiter_);
       return Status::OK();
     }
-
     uint64_t file_size;
     Status status = GetFileSize(filename, &file_size);
     if (status.ok()) {
@@ -582,6 +583,7 @@ class PosixEnv : public Env {
       mmap_limiter_.Release();
     }
     return status;
+
   }
 
   Status NewWritableFile(const std::string& filename,

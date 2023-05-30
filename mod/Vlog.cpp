@@ -19,7 +19,7 @@ namespace adgMod {
 
 
 VLog::VLog(const std::string& vlog_name) :
-     writer(nullptr),
+    writer(nullptr),
     reader(nullptr) {
     adgMod::env->NewWritableFile(vlog_name, &writer);
     adgMod::env->NewRandomAccessFile(vlog_name, &reader);
@@ -48,13 +48,14 @@ string VLog::ReadRecord(uint64_t address, uint32_t size) {
 
     char* scratch = new char[size];
     Slice value;
+/*
     printf("ReadRecord address: %lu, size: %u\n", address, size);
     printf("vlog_size: %lu\n", vlog_size);
-    printf("buffer size: %lu\n", buffer.size());
-    printf("value: %d\n", *(uint8_t *)(value.data()));
-    printf("scratch: %d\n", *(uint8_t*)scratch);
+    printf("buffer size: %lu\n", buffer.size());*/
     reader->Read(address, size, &value, scratch);
-     printf("-------------ss-------\n");
+    /*printf("value: %d\n", *(uint8_t *)(value.data()));
+    printf("scratch: %d\n", *(uint8_t*)scratch);*/
+   //  printf("-------------ss-------\n");
     string result(value.data(), value.size());
     delete[] scratch;
     return result;
