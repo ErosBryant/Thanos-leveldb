@@ -241,9 +241,9 @@ class SpecialEnv : public EnvWrapper {
      public:
       CountingFile(RandomAccessFile* target, AtomicCounter* counter)
           : target_(target), counter_(counter) {}
-      ~CountingFile() override { delete target_; }
-      Status Read(uint64_t offset, size_t n, Slice* result,
-                  char* scratch) const override {
+      virtual ~CountingFile() { delete target_; }
+      virtual Status Read(uint64_t offset, size_t n, Slice* result,
+                          char* scratch) const {
         counter_->Increment();
         return target_->Read(offset, n, result, scratch);
       }

@@ -270,6 +270,8 @@ class LEVELDB_EXPORT RandomAccessFile {
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const = 0;
 
+  
+
 
 };
 

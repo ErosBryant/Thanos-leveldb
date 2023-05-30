@@ -17,10 +17,13 @@ const int buffer_size_max = 300 * 1024;
 namespace adgMod {
 
 
-VLog::VLog(const std::string& vlog_name) : writer(nullptr), reader(nullptr) {
+
+VLog::VLog(const std::string& vlog_name) :
+     writer(nullptr),
+    reader(nullptr) {
     adgMod::env->NewWritableFile(vlog_name, &writer);
     adgMod::env->NewRandomAccessFile(vlog_name, &reader);
-    buffer.reserve(buffer_size_max * 10);
+    buffer.reserve(buffer_size_max * 2);
     struct ::stat file_stat;
     ::stat(vlog_name.c_str(), &file_stat);
     vlog_size = file_stat.st_size;
@@ -39,15 +42,19 @@ uint64_t VLog::AddRecord(const Slice& key, const Slice& value) {
 string VLog::ReadRecord(uint64_t address, uint32_t size) {
     if (address >= vlog_size) return string(buffer.c_str() + address - vlog_size, size);
 
+    if (address + size > vlog_size) {
+      printf("yue jie le \n");
+}
+
     char* scratch = new char[size];
     Slice value;
-    printf("--------------------\n");
-    printf("address: %lu, size: %u\n", address, size);
+    printf("ReadRecord address: %lu, size: %u\n", address, size);
     printf("vlog_size: %lu\n", vlog_size);
     printf("buffer size: %lu\n", buffer.size());
-
+    printf("value: %d\n", *(uint8_t *)(value.data()));
+    printf("scratch: %d\n", *(uint8_t*)scratch);
     reader->Read(address, size, &value, scratch);
-     printf("--------------------\n");
+     printf("-------------ss-------\n");
     string result(value.data(), value.size());
     delete[] scratch;
     return result;

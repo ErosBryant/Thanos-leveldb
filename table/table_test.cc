@@ -116,16 +116,16 @@ class StringSource : public RandomAccessFile {
 
   uint64_t Size() const { return contents_.size(); }
 
-  Status Read(uint64_t offset, size_t n, Slice* result,
-              char* scratch) const override {
+  virtual Status Read(uint64_t offset, size_t n, Slice* result,
+                      char* scratch) const {
+                        printf("StringSource::Read\n");
     if (offset >= contents_.size()) {
       return Status::InvalidArgument("invalid Read offset");
     }
-    
     if (offset + n > contents_.size()) {
       n = contents_.size() - offset;
     }
-    std::memcpy(scratch, &contents_[offset], n);
+    memcpy(scratch, &contents_[offset], n);
     *result = Slice(scratch, n);
     return Status::OK();
   }

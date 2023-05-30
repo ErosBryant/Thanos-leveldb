@@ -917,26 +917,7 @@ class Benchmark {
     thread->stats.AddMessage(msg);
   }
 
-/*
-  void ReadRandom(ThreadState* thread) {
-    ReadOptions options;
-    std::string value;
-    int found = 0;
-    KeyBuffer key;
-    for (int i = 0; i < reads_; i++) {
-      const int k = thread->rand.Uniform(FLAGS_num);
-      key.Set(k);
-      if (db_->Get(options, key.slice(), &value).ok()) {
-        found++;
-      }
-      thread->stats.FinishedSingleOp();
-    }
-    char msg[100];
-    std::snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
-    thread->stats.AddMessage(msg);
-  }
-
-  */
+  
   void ReadMissing(ThreadState* thread) {
     ReadOptions options;
     std::string value;

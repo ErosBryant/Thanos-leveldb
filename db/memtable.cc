@@ -123,6 +123,8 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
         case kTypeValue: {
           Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
           value->assign(v.data(), v.size());
+          printf("memtale get::  value: %d\n", *(uint8_t *)(v.data()));
+          printf("v.size: %lu\n", v.size());
           return true;
         }
         case kTypeDeletion:

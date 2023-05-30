@@ -4,7 +4,7 @@
 
 #include "leveldb/table_builder.h"
 
-#include <cassert>
+#include <assert.h>
 
 #include "leveldb/comparator.h"
 #include "leveldb/env.h"
@@ -101,7 +101,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   if (r->pending_index_entry) {
     assert(r->data_block.empty());
-    r->options.comparator->FindShortestSeparator(&r->last_key, key);
+    //r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
     r->index_block.Add(r->last_key, Slice(handle_encoding));
@@ -168,21 +168,6 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
       }
       break;
     }
-
-    case kZstdCompression: {
-      std::string* compressed = &r->compressed_output;
-      if (port::Zstd_Compress(r->options.zstd_compression_level, raw.data(),
-                              raw.size(), compressed) &&
-          compressed->size() < raw.size() - (raw.size() / 8u)) {
-        block_contents = *compressed;
-      } else {
-        // Zstd not supported, or compressed less than 12.5%, so just
-        // store uncompressed form
-        block_contents = raw;
-        type = kNoCompression;
-      }
-      break;
-    }
   }
   WriteRawBlock(block_contents, type, handle);
   r->compressed_output.clear();
@@ -243,7 +228,7 @@ Status TableBuilder::Finish() {
   // Write index block
   if (ok()) {
     if (r->pending_index_entry) {
-      r->options.comparator->FindShortSuccessor(&r->last_key);
+      //r->options.comparator->FindShortSuccessor(&r->last_key);
       std::string handle_encoding;
       r->pending_handle.EncodeTo(&handle_encoding);
       r->index_block.Add(r->last_key, Slice(handle_encoding));

@@ -4,14 +4,15 @@
 
 #include "db/db_impl.h"
 
+#include <stdint.h>
+#include <stdio.h>
+
 #include <algorithm>
 #include <atomic>
-#include <cstdint>
-#include <cstdio>
 #include <set>
 #include <string>
 #include <vector>
-#include <iostream>
+#include <unistd.h>
 
 #include "db/builder.h"
 #include "db/db_iter.h"
@@ -35,15 +36,10 @@
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
-
-
-#include "mod/Vlog.h"
 #include "mod/util.h"
+#include "mod/Vlog.h"
 #include <x86intrin.h>
-#include "iostream"
-
-#include <stdint.h>
-#include <stdio.h>
+#include <iostream>
 
 namespace leveldb {
 
@@ -538,7 +534,6 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
 
   return status;
 }
-
 Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
                                 Version* base) {
   mutex_.AssertHeld();
@@ -553,12 +548,8 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
-      uint64_t start = env_->NowMicros();
-      s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
-      uint64_t end = env_->NowMicros();
-     dumptime += (end - start);
+    s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
     mutex_.Lock();
-  
   }
 
   Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
@@ -578,7 +569,11 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     }
     edit->AddFile(level, meta.number, meta.file_size, meta.smallest,
                   meta.largest);
-  }
+
+
+  } else return Status::NotFound("Empty");
+
+
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
@@ -1228,30 +1223,32 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
       have_stat_update = true;
     }
     
-    printf("lkey %s\n",lkey.user_key().ToString().c_str());
-    printf("value %lu\n",value->c_str());
+  //  printf("lkey %s\n",lkey.user_key().ToString().c_str());
+   // printf("value %lu\n",value->c_str());
 
     // vlog get
  
     if (adgMod::MOD == 1 && s.ok()) {
-      printf("-----\n");
+      //printf("-----\n");
   
-    uint64_t start2 = env_->NowMicros();
+  //  uint64_t start2 = env_->NowMicros();
     uint64_t value_address = DecodeFixed64(value->c_str());
     uint32_t value_size = DecodeFixed32(value->c_str() + sizeof(uint64_t));
       
   
-  //  printf("value_address %lu\n",&value_address);
-   // printf("value_size %lu\n",&value_size);
+   //printf("value_address %lu\n",&value_address);
+  // printf("value_size %lu\n",&value_size);
 
-      printf("address: %lu, size: %u\n", value_address, value_size);
+    printf("address: %lu, size: %u\n", value_address, value_size);
 
-    *value = std::move( adgMod::db->vlog->ReadRecord(value_address, value_size));
+    *value = std::move(adgMod::db->vlog->ReadRecord(value_address, value_size));
+    printf("value***: %s\n", value->c_str());
+    printf("-----------\n");
     //*value =  adgMod::db->vlog->ReadRecord(value_address, value_size);
     
     // printf("=------------------\n");
-    uint64_t end2 = env_->NowMicros();
-    vlog_imm += (end2 - start2);
+    //uint64_t end2 = env_->NowMicros();
+    //vlog_imm += (end2 - start2);
     }
 
 
@@ -1300,24 +1297,22 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 // Convenience methods
 
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
-  if (adgMod::MOD == 1) {
-
+  if (adgMod::MOD >= 1) {
     uint64_t start = env_->NowMicros();
     uint64_t value_address = adgMod::db->vlog->AddRecord(key, val);
+     //printf("value_address %lu\n", value_address);
     char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
     EncodeFixed64(buffer, value_address);
     EncodeFixed32(buffer + sizeof(uint64_t), val.size());
-
+    //printf("buffer %lu\n", *(uint64_t*)buffer);
     uint64_t end = env_->NowMicros();
     log_time += (end - start);
     return DB::Put(o, key, (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
   } else {
     return DB::Put(o, key, val);
-  }
+  
 }
-
-
-
+}
 
 Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
   return DB::Delete(options, key);
@@ -1343,9 +1338,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
   if (status.ok() && updates != nullptr) {  // nullptr batch is for compactions
-    WriteBatch* write_batch = BuildBatchGroup(&last_writer);
-    WriteBatchInternal::SetSequence(write_batch, last_sequence + 1);
-    last_sequence += WriteBatchInternal::Count(write_batch);
+    WriteBatch* updates = BuildBatchGroup(&last_writer);
+    WriteBatchInternal::SetSequence(updates, last_sequence + 1);
+    last_sequence += WriteBatchInternal::Count(updates);
 
     // Add to log and apply to memtable.  We can release the lock
     // during this phase since &w is currently responsible for logging
@@ -1356,7 +1351,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
        bool sync_error = false;
       if (adgMod::MOD == 0) {
           uint64_t start = env_->NowMicros();
-          status = log_->AddRecord(WriteBatchInternal::Contents(write_batch));
+          status = log_->AddRecord(WriteBatchInternal::Contents(updates));
           uint64_t end = env_->NowMicros();
           log_time += (end - start);
           if (status.ok() && options.sync) {
@@ -1369,7 +1364,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
 
       if (status.ok()) {
         uint64_t start2 = env_->NowMicros();
-        status = WriteBatchInternal::InsertInto(write_batch, mem_);
+        status = WriteBatchInternal::InsertInto(updates, mem_);
         uint64_t end2 = env_->NowMicros();
         w_mem_time += (end2 - start2);
       }
@@ -1381,7 +1376,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
         RecordBackgroundError(status);
       }
     }
-    if (write_batch == tmp_batch_) tmp_batch_->Clear();
+    if (updates == tmp_batch_) tmp_batch_->Clear();
 
     versions_->SetLastSequence(last_sequence);
   }

@@ -2,12 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <fcntl.h>
+#include <table/filter_block.h>
 #include "db/table_cache.h"
-
 #include "db/filename.h"
 #include "leveldb/env.h"
 #include "leveldb/table.h"
 #include "util/coding.h"
+
+#include "table/block.h"
+#include "db/version_set.h"
 
 namespace leveldb {
 
@@ -111,7 +115,8 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 Status TableCache::Get(const ReadOptions& options, uint64_t file_number,
                        uint64_t file_size, const Slice& k, void* arg,
                        void (*handle_result)(void*, const Slice&,
-                                             const Slice&)) {
+                                             const Slice&),int level,
+                       FileMetaData* meta) {
   Cache::Handle* handle = nullptr;
 
   uint64_t start = env_->NowMicros();
@@ -122,7 +127,10 @@ Status TableCache::Get(const ReadOptions& options, uint64_t file_number,
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
           // de_se 
     uint64_t start = env_->NowMicros();
-    s = t->InternalGet(options, k, arg, handle_result);
+    s = t->InternalGet(options, k, arg, handle_result, level,meta );
+            printf("arg : %d\n",*(int*)arg);
+          printf("TableCache::Get k : %d\n",*(int*)k.data());
+          printf("handle_result : %d\n",*(int*)handle_result);
     uint64_t end = env_->NowMicros();
     return_value_func+=(end-start);
     

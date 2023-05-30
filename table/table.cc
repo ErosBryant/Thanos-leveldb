@@ -225,10 +225,11 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {
       rep_->index_block->NewIterator(rep_->options.comparator),
       &Table::BlockReader, const_cast<Table*>(this), options);
 }
-
+/*
 Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
                           void (*handle_result)(void*, const Slice&,
-                                                const Slice&)) {
+                                                const Slice&), int level,
+                       FileMetaData* meta) {
   Status s;
  // Env* env_ = Env::Default();
   Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
@@ -263,6 +264,50 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
   delete iiter;
   return s;
 }
+*/
+
+Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
+                          void (*handle_result)(void*, const Slice&,
+                                                const Slice&), int level,
+                       FileMetaData* meta) {
+  Status s;
+  Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
+  ParsedInternalKey parsed_key;
+  ParseInternalKey(k, &parsed_key);
+
+    iiter->Seek(k);
+
+    if (iiter->Valid()) {
+
+      Slice handle_value = iiter->value();
+      FilterBlockReader* filter = rep_->filter;
+      BlockHandle handle;
+      if (filter != nullptr && handle.DecodeFrom(&handle_value).ok() &&
+          !filter->KeyMayMatch(handle.offset(), k)) {
+
+      } else {
+
+        Iterator* block_iter = BlockReader(this, options, iiter->value());
+
+        block_iter->Seek(k);
+
+        if (block_iter->Valid()) {
+          (*handle_result)(arg, block_iter->key(), block_iter->value());
+
+          printf("key: %d\n", *(uint8_t *)(block_iter->key().data()));
+          printf("InternalGet value+: %d\n", *(uint8_t *)(block_iter->value().data()));
+        }
+        s = block_iter->status();
+        delete block_iter;
+      }
+    }
+    if (s.ok()) {
+      s = iiter->status();
+    }
+    delete iiter;
+    return s;
+}
+
 
 uint64_t Table::ApproximateOffsetOf(const Slice& key) const {
   Iterator* index_iter =

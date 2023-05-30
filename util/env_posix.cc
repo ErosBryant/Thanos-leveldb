@@ -168,11 +168,15 @@ class PosixSequentialFile final : public SequentialFile {
   const std::string filename_;
 };
 
+
+
 // Implements random read access in a file using pread().
 //
 // Instances of this class are thread-safe, as required by the RandomAccessFile
 // API. Instances are immutable and Read() only calls thread-safe library
-// functions.
+// functions.class PosixRandomAccessFile final : public RandomAccessFile {
+
+
 class PosixRandomAccessFile final : public RandomAccessFile {
  public:
   // The new instance takes ownership of |fd|. |fd_limiter| must outlive this
@@ -196,12 +200,16 @@ class PosixRandomAccessFile final : public RandomAccessFile {
     }
   }
 
+
+
+
+
   Status Read(uint64_t offset, size_t n, Slice* result,
               char* scratch) const override {
-          
+                printf("aaaaaa Read\n");
     int fd = fd_;
     if (!has_permanent_fd_) {
-      fd = ::open(filename_.c_str(), O_RDONLY | kOpenBaseFlags);
+      fd = ::open(filename_.c_str(), O_RDONLY);
       if (fd < 0) {
         return PosixError(filename_, errno);
       }
@@ -211,7 +219,9 @@ class PosixRandomAccessFile final : public RandomAccessFile {
 
     Status status;
     ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
+    printf("aaaaaa read_size %d\n", read_size);
     *result = Slice(scratch, (read_size < 0) ? 0 : read_size);
+    printf("aaaaaa result %s\n", result->ToString().c_str());
     if (read_size < 0) {
       // An error: return a non-ok status.
       status = PosixError(filename_, errno);
@@ -224,12 +234,14 @@ class PosixRandomAccessFile final : public RandomAccessFile {
     return status;
   }
 
+
  private:
   const bool has_permanent_fd_;  // If false, the file is opened on every read.
   const int fd_;                 // -1 if has_permanent_fd_ is false.
   Limiter* const fd_limiter_;
   const std::string filename_;
 };
+
 
 // Implements random read access in a file using mmap().
 //
@@ -259,7 +271,7 @@ class PosixMmapReadableFile final : public RandomAccessFile {
 
   Status Read(uint64_t offset, size_t n, Slice* result,
               char* scratch) const override {
-
+   printf("11111\n");
     if (offset + n > length_) {
       *result = Slice();
       return PosixError(filename_, EINVAL);
