@@ -41,6 +41,9 @@
 #include <x86intrin.h>
 #include <iostream>
 
+#define time 0
+
+
 namespace leveldb {
 
 const int kNumNonTableCacheFiles = 10;
@@ -131,7 +134,7 @@ static int TableCacheSize(const Options& sanitized_options) {
 
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     : env_(raw_options.env),
-      // 추가 
+      #if time
       mem_stall_time_(0), 
       L0_stall_time_(0),
       mem_time_(0),
@@ -142,6 +145,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       dumptime(0),
       log_time(0),
       wa(0),
+      #endif
       internal_comparator_(raw_options.comparator),
       internal_filter_policy_(raw_options.filter_policy),
       options_(SanitizeOptions(dbname, &internal_comparator_,
@@ -548,11 +552,14 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
+      #if time
       uint64_t start = env_->NowMicros();
-
+      #endif
     s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+    #if time
       uint64_t end = env_->NowMicros();
       dumptime += (end - start);
+      #endif
     mutex_.Lock();
   }
 
@@ -750,9 +757,13 @@ void DBImpl::BackgroundCall() {
   } else if (!bg_error_.ok()) {
     // No more background work after a background error.
   } else {
+    #if time
     uint64_t com_start = env_->NowMicros();
+    #endif
     BackgroundCompaction();
+    #if time
     comp_time +=(env_->NowMicros()- com_start);
+     #endif
   }
 
   background_compaction_scheduled_ = false;
@@ -993,8 +1004,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
        // const uint64_t imm_start = env_->NowMicros();
         CompactMemTable();
       imm_micros += (env_->NowMicros() - imm_start);
-      //comp_time-=imm_micros;
-        // Wake up MakeRoomForWrite() if necessary.
+
         background_work_finished_signal_.SignalAll();
       }
       mutex_.Unlock();
@@ -1209,41 +1219,49 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     mutex_.Unlock();
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
-
+    #if time
     uint64_t start = env_->NowMicros();
+    #endif
     if (mem->Get(lkey, value, &s)) {
+    #if time
       uint64_t end = env_->NowMicros();
       mem_time_ += (end - start);
+    #endif
     } else if (imm != nullptr && imm->Get(lkey, value, &s)) {
+      #if time
       uint64_t end = env_->NowMicros();
       mem_time_ += (end - start);
+      #endif
     } else {
       // sst 찾기 
+      #if time
       uint64_t start_s = env_->NowMicros();
+      #endif
       s = current->Get(options, lkey, value, &stats);
+      #if time
       uint64_t end_s = env_->NowMicros();
       SST_time_ += (end_s - start_s);
-
+      #endif
       have_stat_update = true;
     }
     
     if (adgMod::MOD == 1 && s.ok()) {
     
-  
+  #if time
     uint64_t start2 = env_->NowMicros();
+    #endif
     uint64_t value_address = DecodeFixed64(value->c_str());
     uint32_t value_size = DecodeFixed32(value->c_str() + sizeof(uint64_t));
-      
-  
-   //printf("value_address %lu\n",&value_address);
-  // printf("value_size %lu\n",&value_size);
+    
 
     //  printf("address: %lu, size: %u\n", value_address, value_size);
 
     *value = std::move(adgMod::db->vlog->ReadRecord(value_address, value_size));
     // printf("value***: %s\n", value->c_str());
+     #if time
     uint64_t end2 = env_->NowMicros();
     vlog_imm += (end2 - start2);
+     #endif
     }
 
 
@@ -1293,15 +1311,19 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
   if (adgMod::MOD >= 1) {
+    #if time
     uint64_t start = env_->NowMicros();
+    #endif 
     uint64_t value_address = adgMod::db->vlog->AddRecord(key, val);
+
      //printf("value_address %lu\n", value_address);
     char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
     EncodeFixed64(buffer, value_address);
     EncodeFixed32(buffer + sizeof(uint64_t), val.size());
-    //printf("buffer %lu\n", *(uint64_t*)buffer);
+    #if time
     uint64_t end = env_->NowMicros();
     log_time += (end - start);
+    #endif 
     return DB::Put(o, key, (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
   } else {
     return DB::Put(o, key, val);
@@ -1345,10 +1367,14 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
       mutex_.Unlock();
        bool sync_error = false;
       if (adgMod::MOD == 0) {
+          #if time
           uint64_t start = env_->NowMicros();
+          #endif
           status = log_->AddRecord(WriteBatchInternal::Contents(updates));
+          #if time
           uint64_t end = env_->NowMicros();
           log_time += (end - start);
+          #endif
           if (status.ok() && options.sync) {
               status = logfile_->Sync();
               if (!status.ok()) {
@@ -1358,10 +1384,14 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
       }
 
       if (status.ok()) {
+        #if time
         uint64_t start2 = env_->NowMicros();
+        #endif
         status = WriteBatchInternal::InsertInto(updates, mem_);
+        #if time
         uint64_t end2 = env_->NowMicros();
         w_mem_time += (end2 - start2);
+        #endif
       }
       mutex_.Lock();
       if (sync_error) {
@@ -1475,22 +1505,30 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       break;
     } else if (imm_ != nullptr) {
       //추가 
+      #if time
       uint64_t start = env_->NowMicros();
+      #endif
       // We have filled up the current memtable, but the previous
       // one is still being compacted, so we wait.
       Log(options_.info_log, "Current memtable full; waiting...\n");
       background_work_finished_signal_.Wait();
+      #if time
       uint64_t end = env_->NowMicros();
       mem_stall_time_ += (end - start);
+      #endif
       
 
     } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
       // There are too many level-0 files.
+      #if time
       uint64_t start = env_->NowMicros();
+      #endif
       Log(options_.info_log, "Too many L0 files; waiting...\n");
       background_work_finished_signal_.Wait();
+      #if time
       uint64_t end = env_->NowMicros();
       L0_stall_time_ += (end - start);
+      #endif
     } else {
       // Attempt to switch to a new memtable and trigger compaction of old
       assert(versions_->PrevLogNumber() == 0);
@@ -1555,6 +1593,7 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
       return true;
     }
   } else if (in == "stats") {
+    
     char buf[200];
     std::snprintf(buf, sizeof(buf),
                   "                               Compactions\n"
@@ -1572,7 +1611,8 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
         value->append(buf);
       }
     }
-      // 쓰기 시간
+
+#if time
   std::cout << "log time: " << log_time << "us" << std::endl;
   std::cout << "memtable write time: " << w_mem_time << "us" << std::endl;
   std::cout << "memtable stall time: " << mem_stall_time_ << "us" << std::endl;
@@ -1590,7 +1630,7 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
   std::cout << "find table time: " << TableCache::find_table_time << "us" << std::endl;
   std::cout << "sst internal search time : " << TableCache::return_value_func << "us" << std::endl;
   std::cout << "de_serialize time: " << Table::return_value << "us" << std::endl;
-
+#endif
 
     return true;
   } else if (in == "vlog_stats") {
@@ -1658,7 +1698,6 @@ DB::~DB() = default;
 
 Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   *dbptr = nullptr;
-
   adgMod::env = options.env;
 
   DBImpl* impl = new DBImpl(options, dbname);

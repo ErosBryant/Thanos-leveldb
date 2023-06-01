@@ -94,11 +94,15 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
   }
 
   Cache::Handle* handle = nullptr;
+  
+  #if time
   uint64_t start = env_->NowMicros();
-
+  #endif
   Status s = FindTable(file_number, file_size, &handle);
+  #if time
   uint64_t end = env_->NowMicros();
   find_table_time +=(end-start);
+  #endif
   if (!s.ok()) {
     return NewErrorIterator(s);
   }
@@ -118,22 +122,26 @@ Status TableCache::Get(const ReadOptions& options, uint64_t file_number,
                                              const Slice&),int level,
                        FileMetaData* meta) {
   Cache::Handle* handle = nullptr;
-
+  #if time
   uint64_t start = env_->NowMicros();
+  #endif
   Status s = FindTable(file_number, file_size, &handle);
+  #if time
   uint64_t end = env_->NowMicros();
   find_table_time +=(end-start);
+  #endif
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
           // de_se 
+    #if time
     uint64_t start = env_->NowMicros();
+    #endif
     s = t->InternalGet(options, k, arg, handle_result, level,meta );
-        /*  printf("arg : %d\n",*(int*)arg);
-          printf("TableCache::Get k : %d\n",*(int*)k.data());
-          printf("handle_result : %d\n",*(int*)handle_result);*/
+    #if time
     uint64_t end = env_->NowMicros();
     return_value_func+=(end-start);
-    
+    #endif
+
     cache_->Release(handle);
   }
   return s;

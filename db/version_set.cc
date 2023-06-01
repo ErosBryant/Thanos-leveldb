@@ -346,7 +346,9 @@ uint64_t Version::sst_index_time = 0;
         // in a smaller level, later levels are irrelevant.
         std::vector<FileMetaData *> tmp;
         FileMetaData *tmp2;
+        #if time
         auto sst_start = std::chrono::high_resolution_clock::now();
+        #endif
         for (int level = 0; level < config::kNumLevels; level++) {
             size_t num_files = files_[level].size();
             if (num_files == 0) continue;
@@ -388,8 +390,10 @@ uint64_t Version::sst_index_time = 0;
                         }
                     }
                 }
+            #if time
             auto sst_end = std::chrono::high_resolution_clock::now();
             Version::sst_index_time += std::chrono::duration_cast<std::chrono::microseconds>(sst_end - sst_start).count();
+            #endif
             for (uint32_t i = 0; i < num_files; ++i) {
                 if (last_file_read != nullptr && stats->seek_file == nullptr) {
                     // We have had more than one seek for this read.  Charge the 1st file.

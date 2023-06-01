@@ -114,7 +114,7 @@ static int FLAGS_open_files = 0;
 static int FLAGS_bloom_bits = -1;
 
 // Common key prefix length.
-static int FLAGS_key_prefix = 0;
+static int FLAGS_key_prefix = 16;
 
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
@@ -444,7 +444,7 @@ class Benchmark {
   int total_thread_count_;
 
   void PrintHeader() {
-    const int kKeySize = 16 + FLAGS_key_prefix;
+    const int kKeySize = FLAGS_key_prefix;
     PrintEnvironment();
     std::fprintf(stdout, "Keys:       %d bytes each\n", kKeySize);
     std::fprintf(
@@ -1119,7 +1119,7 @@ int main(int argc, char** argv) {
       FLAGS_max_file_size = n;
     } else if (sscanf(argv[i], "--block_size=%d%c", &n, &junk) == 1) {
       FLAGS_block_size = n;
-    } else if (sscanf(argv[i], "--key_prefix=%d%c", &n, &junk) == 1) {
+    } else if (sscanf(argv[i], "--key_size=%d%c", &n, &junk) == 1) {
       FLAGS_key_prefix = n;
     } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
       FLAGS_cache_size = n;

@@ -181,10 +181,14 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
       } else {
         // de se: read block
+        #if time
          uint64_t start = env_->NowMicros(); 
+         #endif
          s = ReadBlock(table->rep_->file, options, handle, &contents);
+         #if time
          uint64_t end = env_->NowMicros();
          return_value+= (end-start);
+         #endif
 
         if (s.ok()) {
           block = new Block(contents);
@@ -195,11 +199,14 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
         }
       }
     } else {
-              // de se: read block
+         #if time
         uint64_t start = env_->NowMicros(); 
+         #endif
         s = ReadBlock(table->rep_->file, options, handle, &contents);
+        #if time
         uint64_t end = env_->NowMicros();
         return_value+= (end-start);
+        #endif
       if (s.ok()) {
         block = new Block(contents);
       }

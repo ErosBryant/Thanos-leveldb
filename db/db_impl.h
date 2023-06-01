@@ -81,7 +81,8 @@ class DBImpl : public DB {
   friend class DB;
   struct CompactionState;
   struct Writer;
-  // 추가 
+  // 추가
+  #if time
   uint64_t mem_stall_time_;
   uint64_t L0_stall_time_;
   uint64_t mem_time_;
@@ -91,7 +92,7 @@ class DBImpl : public DB {
   uint64_t log_time;
   uint64_t comp_time;
   uint64_t w_mem_time;
-
+#endif
   size_t wa;
 
   // Information for a manual compaction
